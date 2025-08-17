@@ -1,0 +1,6 @@
+pandas>=2.0
+SQLAlchemy>=2.0
+redis>=5.0
+shioaji>=1.0 ; platform_system == "Windows" or platform_system == "Linux"
+numpy>=1.26
+python-dateutil>=2.8

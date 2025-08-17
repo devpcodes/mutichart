@@ -1,0 +1,5 @@
+pymysql
+sqlalchemy
+pandas
+redis
+schedule

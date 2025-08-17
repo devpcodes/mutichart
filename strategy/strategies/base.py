@@ -1,0 +1,9 @@
+# -*- coding: utf-8 -*-
+from typing import Dict, List, Optional
+from strategy.core.events import Bar, Tick, Signal
+
+class Strategy:
+    def on_start(self, symbols: List[str], warmup_bars: Dict[str, List[Bar]]) -> None: ...
+    def on_bar(self, bar: Bar) -> Optional[Signal]: ...
+    def on_tick(self, tick: Tick) -> Optional[Signal]: return None
+    def on_stop(self) -> None: ...
