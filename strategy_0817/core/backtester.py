@@ -1,9 +1,3 @@
-import os
-from dotenv import load_dotenv
-load_dotenv()
-TAX_RATE = float(os.getenv('TAX_RATE','0'))
-FEE_RATE = float(os.getenv('FEE_RATE','0'))
-
 # -*- coding: utf-8 -*-
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -14,8 +8,8 @@ from strategy.config import MULTIPLIER, TIMEZONE
 from strategy.core.calendar import is_third_wed_1329
 import pytz
 
-SLIPPAGE = float(os.getenv('SLIPPAGE', '0.0'))
-FEE_PER_CONTRACT = float(os.getenv('FEE_PER_CONTRACT', '0.0'))
+SLIPPAGE = 0.0
+FEE_PER_CONTRACT = 0.0
 
 @dataclass
 class Position:

@@ -91,4 +91,70 @@ class PSARHourly(Strategy):
     def on_stop(self) -> None:
         pass
 
-StrategyClass = PSARHourly
+
+# === Risk Wrapper added ===
+class RiskWrappedPSARHourly(Strategy):
+    """即時停損/移動停利包裝：預設 sl_points=200, trail_trigger=200, trail_retrace=0.40（可由 STRATEGY_PARAMS 改）"""
+    def __init__(self, sl_points: int = 200, trail_trigger: int = 200, trail_retrace: float = 0.40, **kwargs):
+        self.inner = PSARHourly(**kwargs)
+        self.sl_points = int(sl_points)
+        self.trail_trigger = int(trail_trigger)
+        self.trail_retrace = float(trail_retrace)
+        self.pos, self.entry, self.peak, self.trough, self.triggered = {}, {}, {}, {}, {}
+
+    def on_start(self, symbols, warmup_bars):
+        self.inner.on_start(symbols, warmup_bars)
+        for s in symbols:
+            self.pos[s] = 0; self.entry[s] = 0.0
+            self.peak[s] = float('-inf'); self.trough[s] = float('inf'); self.triggered[s] = False
+
+    def _apply_risk_on_tick(self, tick):
+        s = tick.symbol
+        pos = self.pos.get(s, 0)
+        if pos == 0: return None
+        epx = self.entry.get(s, 0.0)
+        price = float(getattr(tick, "price", getattr(tick, "c", 0.0)))
+        if pos > 0:  # long
+            self.peak[s] = max(self.peak.get(s, float('-inf')), price)
+            if price <= epx - self.sl_points:
+                self.pos[s]=0; self.triggered[s]=False; return Signal(s,"FLAT",0,f"SL {self.sl_points}pts")
+            if price - epx >= self.trail_trigger:
+                self.triggered[s] = True
+            if self.triggered.get(s, False):
+                mfe = self.peak[s] - epx
+                if mfe > 0 and (self.peak[s] - price) >= self.trail_retrace * mfe:
+                    self.pos[s]=0; self.triggered[s]=False; return Signal(s,"FLAT",0,f"Trail {int(self.trail_retrace*100)}% of {int(mfe)}pts")
+        else:        # short
+            self.trough[s] = min(self.trough.get(s, float('inf')), price)
+            if price >= epx + self.sl_points:
+                self.pos[s]=0; self.triggered[s]=False; return Signal(s,"FLAT",0,f"SL {self.sl_points}pts")
+            if epx - price >= self.trail_trigger:
+                self.triggered[s] = True
+            if self.triggered.get(s, False):
+                mfe = epx - self.trough[s]
+                if mfe > 0 and (price - self.trough[s]) >= self.trail_retrace * mfe:
+                    self.pos[s]=0; self.triggered[s]=False; return Signal(s,"FLAT",0,f"Trail {int(self.trail_retrace*100)}% of {int(mfe)}pts")
+        return None
+
+    def _update_pos_from_signal(self, sig, px):
+        if not sig: return
+        s, side = sig.symbol, (sig.side or "").upper()
+        if side == "BUY":  self.pos[s]=1;  self.entry[s]=px; self.peak[s]=px; self.trough[s]=px; self.triggered[s]=False
+        if side == "SELL": self.pos[s]=-1; self.entry[s]=px; self.peak[s]=px; self.trough[s]=px; self.triggered[s]=False
+        if side == "FLAT": self.pos[s]=0;  self.triggered[s]=False
+
+    def on_tick(self, tick):
+        rs = self._apply_risk_on_tick(tick)
+        if rs: self._update_pos_from_signal(rs, float(getattr(tick,"price",getattr(tick,"c",0.0)))); return rs
+        inner = self.inner.on_tick(tick)
+        if inner: self._update_pos_from_signal(inner, float(getattr(tick,"price",getattr(tick,"c",0.0))))
+        return inner
+
+    def on_bar(self, bar):
+        sig = self.inner.on_bar(bar)
+        if sig: self._update_pos_from_signal(sig, bar.c)
+        return sig
+
+    def on_stop(self): self.inner.on_stop()
+
+StrategyClass = RiskWrappedPSARHourly

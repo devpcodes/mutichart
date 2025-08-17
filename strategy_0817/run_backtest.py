@@ -43,15 +43,20 @@ def main():
     parser.add_argument("--end", type=str, default=None, help="回測結束時間，例如 2025-08-01 13:45")
     args = parser.parse_args()
     single_symbol = args.symbol.upper()
+    # 覆蓋全域 SYMBOLS，僅回測指定商品
     global SYMBOLS
     SYMBOLS = [single_symbol]
+    # 輸出目錄依商品區分
     global OUT_DIR
     OUT_DIR = OUT_DIR / single_symbol.lower()
+    # 若指定回測區間，在輸出路徑再加一層，方便分辨
     if args.start or args.end:
         def _san(s):
             return (s or "NA").replace(":", "").replace(" ", "").replace("-", "")
         OUT_DIR = OUT_DIR / f"{_san(args.start)}_{_san(args.end)}"
     print(f"[BT] 回測標的: {single_symbol} | 期間: {args.start or '(未指定)'} → {args.end or '(未指定)'}")
+
+
 
     # 讀 1 分鐘 K（近似 tick；可在 storage 設 only_day=True 過濾日盤）
     data_1m = {s: load_history(s, limit_bars=args.limit, frame=FEED_FRAME, start_ts=args.start, end_ts=args.end) for s in SYMBOLS}

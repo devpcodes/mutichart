@@ -1,0 +1,19 @@
+Quick Start
+===========
+1) 解壓本壓縮檔
+2) 複製 .env.example 為 .env，填上 API_KEY / SECRET_KEY（SIMULATION=true 可跑模擬盤）
+3) 確認 strategy/config.py 的 SYMBOLS 與 SESSION（.env 可覆蓋 SESSION）
+
+回測（含時間區間、商品分資料夾輸出）
+----------------------------------
+python -m strategy.run_backtest --symbol MXF --start "2025-07-01 08:45" --end "2025-08-01 13:45"
+
+實盤（含夜盤、FLAT 自動對沖、IOC 市價單）
+----------------------------------------
+python -m strategy.run_live
+
+策略與風控（預設，可於 STRATEGY_PARAMS 調整）
+--------------------------------------------
+- 固定停損: sl_points=200
+- 移動停利: 獲利達 trail_trigger=200 後，回吐 trail_retrace=0.40 觸發 FLAT 平倉
+- 回測/實盤一致性：bar 訊號採 MC 下一棒開盤成交；FLAT 在實盤將查淨部位→IOC 對沖。
